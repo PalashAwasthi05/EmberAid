@@ -5,7 +5,7 @@ import { ImageUploader } from "./image-uploader"
 import { ImageAnnotation } from "./image-annotation"
 import { ResultsList } from "./results-list"
 import type { DetectedItem } from "@/types/types"
-import { simulateObjectDetection } from "@/lib/api-simulation"
+import { uploadImageForDetection, fallbackToSimulation } from "@/lib/api"
 import { Flame, ChevronLeft } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -14,15 +14,30 @@ export default function EmberAidApp() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [detectedItems, setDetectedItems] = useState<DetectedItem[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [useFallback, setUseFallback] = useState(false)
 
-  const handleImageUpload = async (imageDataUrl: string) => {
+  const handleImageUpload = async (imageDataUrl: string, imageFile: File) => {
     setUploadedImage(imageDataUrl)
     setIsProcessing(true)
     setError(null)
 
     try {
-      // Simulate API call for object detection
-      const items = await simulateObjectDetection(imageDataUrl)
+      let items: DetectedItem[]
+      
+      if (useFallback) {
+        // Use simulation if backend is not available
+        items = await fallbackToSimulation(imageDataUrl)
+      } else {
+        try {
+          // Try to use the real API
+          items = await uploadImageForDetection(imageFile)
+        } catch (err) {
+          console.error("Error with real API, falling back to simulation:", err)
+          setUseFallback(true)
+          items = await fallbackToSimulation(imageDataUrl)
+        }
+      }
+      
       setDetectedItems(items)
     } catch (err) {
       setError("Failed to process the image. Please try again.")

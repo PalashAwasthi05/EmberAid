@@ -5,6 +5,12 @@ export interface BoundingBox {
   height: number // Normalized (0-1) height of bounding box
 }
 
+export interface ItemDetails {
+  color?: string
+  material?: string
+  dimensions?: string
+}
+
 export interface DetectedItem {
   id: string
   label: string
@@ -13,5 +19,6 @@ export interface DetectedItem {
   valueSource?: string
   sourceUrl?: string
   isPriceModified?: boolean
+  details?: ItemDetails
 }
 

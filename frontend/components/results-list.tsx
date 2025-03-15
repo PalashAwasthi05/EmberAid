@@ -11,6 +11,9 @@ import {
   AlertTriangle,
   ExternalLink,
   Edit,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react"
 import { exportToCSV, exportToExcel } from "@/lib/export-utils"
 import { motion, AnimatePresence } from "framer-motion"
@@ -25,6 +28,8 @@ export function ResultsList({ detectedItems, updateItemValue, isProcessing }: Re
   const [exportType, setExportType] = useState<"csv" | "excel" | null>(null)
   const [isExporting, setIsExporting] = useState(false)
   const [showExportOptions, setShowExportOptions] = useState(false)
+  const [isEditing, setIsEditing] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState<number>(0)
 
   const totalValue = detectedItems.reduce((sum, item) => sum + (item.estimatedValue || 0), 0)
 
@@ -45,6 +50,22 @@ export function ResultsList({ detectedItems, updateItemValue, isProcessing }: Re
       setIsExporting(false)
       setExportType(null)
     }
+  }
+
+  const startEdit = (item: DetectedItem) => {
+    setIsEditing(item.id)
+    setEditValue(item.estimatedValue || 0)
+  }
+
+  const saveEdit = () => {
+    if (isEditing) {
+      updateItemValue(isEditing, editValue)
+      setIsEditing(null)
+    }
+  }
+
+  const cancelEdit = () => {
+    setIsEditing(null)
   }
 
   if (isProcessing) {
@@ -154,24 +175,55 @@ export function ResultsList({ detectedItems, updateItemValue, isProcessing }: Re
       </div>
 
       <div className="overflow-y-auto max-h-[500px] scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-transparent">
-        <table className="w-full">
-          <thead className="bg-gray-50 sticky top-0 z-10">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 text-gray-600 text-sm font-medium border-b border-gray-200">
             <tr>
-              <th className="py-3 px-6 text-left text-gray-700 font-semibold">Item</th>
-              <th className="py-3 px-6 text-left text-gray-700 font-semibold">Estimated Value</th>
+              <th className="px-6 py-3">Item</th>
+              <th className="px-6 py-3">Details</th>
+              <th className="px-6 py-3 text-right">Value ($)</th>
+              <th className="px-6 py-3 text-right">Source</th>
+              <th className="px-6 py-3"></th>
             </tr>
           </thead>
-          <tbody>
-            {detectedItems.map((item, index) => (
-              <motion.tr
-                key={item.id}
-                className="border-b border-gray-100 hover:bg-gray-50/50 transition-colors"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-              >
-                <td className="py-4 px-6">
-                  <div className="font-medium text-gray-800">{item.label}</div>
+          <tbody className="divide-y divide-gray-200">
+            {detectedItems.map((item) => (
+              <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-6 py-4 font-medium">{item.label}</td>
+                <td className="px-6 py-4 text-sm text-gray-600">
+                  {item.details && (
+                    <>
+                      {item.details.color && <span>Color: {item.details.color}<br/></span>}
+                      {item.details.material && <span>Material: {item.details.material}<br/></span>}
+                      {item.details.dimensions && <span>Size: {item.details.dimensions}</span>}
+                    </>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-right">
+                  {isEditing === item.id ? (
+                    <div className="flex items-center justify-end">
+                      <span className="mr-1">$</span>
+                      <input
+                        type="number"
+                        className="w-24 py-1 px-2 border border-gray-300 rounded-md text-right"
+                        value={editValue}
+                        onChange={(e) => setEditValue(parseFloat(e.target.value) || 0)}
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveEdit();
+                          if (e.key === "Escape") cancelEdit();
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-end text-gray-900">
+                      ${item.estimatedValue ? item.estimatedValue.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      }) : "0.00"}
+                    </div>
+                  )}
+                </td>
+                <td className="px-6 py-4 text-right">
                   {item.sourceUrl && item.valueSource && !item.isPriceModified && (
                     <div className="text-xs text-gray-500 mt-1 flex items-center">
                       <span>Source: </span>
@@ -193,21 +245,32 @@ export function ResultsList({ detectedItems, updateItemValue, isProcessing }: Re
                     </div>
                   )}
                 </td>
-                <td className="py-4 px-6">
-                  <div className="flex items-center">
-                    <div className="p-1 bg-gray-100 rounded-md mr-2">
-                      <DollarSign className="h-4 w-4 text-gray-600" />
+                <td className="px-6 py-4 text-right">
+                  {isEditing === item.id ? (
+                    <div className="flex space-x-1">
+                      <button 
+                        onClick={saveEdit}
+                        className="p-1 text-green-600 hover:text-green-800"
+                      >
+                        <Check className="h-4 w-4" />
+                      </button>
+                      <button 
+                        onClick={cancelEdit}
+                        className="p-1 text-red-600 hover:text-red-800"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
                     </div>
-                    <input
-                      type="number"
-                      value={item.estimatedValue || ""}
-                      onChange={(e) => updateItemValue(item.id, Number.parseFloat(e.target.value) || 0)}
-                      placeholder={item.estimatedValue ? undefined : "Enter value"}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
-                    />
-                  </div>
+                  ) : (
+                    <button 
+                      onClick={() => startEdit(item)}
+                      className="p-1 text-gray-400 hover:text-gray-600"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  )}
                 </td>
-              </motion.tr>
+              </tr>
             ))}
           </tbody>
         </table>

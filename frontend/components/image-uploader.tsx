@@ -5,7 +5,7 @@ import { AlertCircle, Upload, FileImage } from "lucide-react"
 import { motion } from "framer-motion"
 
 interface ImageUploaderProps {
-  onImageUpload: (imageDataUrl: string) => void
+  onImageUpload: (imageDataUrl: string, imageFile: File) => void
 }
 
 export function ImageUploader({ onImageUpload }: ImageUploaderProps) {
@@ -48,11 +48,11 @@ export function ImageUploader({ onImageUpload }: ImageUploaderProps) {
       return
     }
 
-    // Read and convert file to data URL
+    // Read and convert file to data URL for preview
     const reader = new FileReader()
     reader.onload = (e) => {
       if (e.target?.result) {
-        onImageUpload(e.target.result as string)
+        onImageUpload(e.target.result as string, file)
       }
     }
     reader.onerror = () => {

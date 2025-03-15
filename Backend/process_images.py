@@ -6,7 +6,7 @@ from base64 import b64encode
 from typing import Optional
 import json
 from dotenv import load_dotenv
-from __init__ import get_product_price
+from PriceScraper.__init__ import get_product_price
 
 # Load environment variables from .env file
 load_dotenv()

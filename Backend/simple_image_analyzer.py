@@ -1,7 +1,9 @@
 import os
+import base64
 from typing import Dict, Any, Optional
 import openai
 from dotenv import load_dotenv
+import requests
 
 # Load environment variables from .env file
 load_dotenv()
@@ -23,13 +25,17 @@ class SimpleImageAnalyzer:
             dict: Object details including color, name, dimensions, and material
         """
         try:
-            # Read the image file as binary data
+            # Read the image file as binary data and encode properly
             with open(image_path, "rb") as image_file:
                 image_data = image_file.read()
+                
+            # Convert binary data to base64 encoding
+            base64_encoded = base64.b64encode(image_data).decode('utf-8')
             
-            # Call the OpenAI Vision API with the updated model name
-            response = openai.chat.completions.create(
-                model="gpt-4o",  # Updated from gpt-4-vision-preview to gpt-4o
+            # Call the OpenAI Vision API
+            client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+            response = client.chat.completions.create(
+                model="gpt-4o",
                 messages=[
                     {
                         "role": "user",
@@ -53,7 +59,9 @@ class SimpleImageAnalyzer:
                             },
                             {
                                 "type": "image_url",
-                                "image_url": {"url": f"data:image/jpeg;base64,{image_data.hex()}", "detail": "high"}
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{base64_encoded}",
+                                }
                             }
                         ]
                     }

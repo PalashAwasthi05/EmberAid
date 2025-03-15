@@ -11,8 +11,10 @@ from ultralytics import YOLO
 import traceback
 from dotenv import load_dotenv
 import re
+import sys
 
 # Import price scraper and simplified image analyzer
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PriceScraper import get_product_price
 from simple_image_analyzer import SimpleImageAnalyzer
 
@@ -70,30 +72,29 @@ def detect_objects():
             x1, y1, x2, y2, conf, cls = detection.tolist()
             x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
             
-            # Get class name from the model's class names dictionary
             class_name = results[0].names[int(cls)]
             
-            # Calculate normalized bounding box coordinates (0-1 range)
+            # Calculate normalized coordinates
             img_height, img_width = image.shape[:2]
-            
-            # Calculate normalized values
             norm_x = x1 / img_width
             norm_y = y1 / img_height
             norm_width = (x2 - x1) / img_width
             norm_height = (y2 - y1) / img_height
             
-            # Extract cropped object
+            # Extract and save cropped object
             cropped_object = image[y1:y2, x1:x2]
             
-            # Save cropped object to detected_objects folder
+            # Convert BGR to RGB (OpenCV uses BGR by default)
+            cropped_object_rgb = cv2.cvtColor(cropped_object, cv2.COLOR_BGR2RGB)
+            
+            # Save as JPEG using PIL (which handles image formats better)
             cropped_path = os.path.join(DETECTED_OBJECTS_FOLDER, f"{class_name}_{idx}.jpg")
-            cv2.imwrite(cropped_path, cropped_object)
+            Image.fromarray(cropped_object_rgb).save(cropped_path, format='JPEG', quality=95)
             
             try:
-                # Try to analyze the cropped image with OpenAI vision model
+                # Analyze the cropped image
                 analysis = image_analyzer.analyze(cropped_path)
                 
-                # Create enhanced product info with detailed attributes
                 product_info = {
                     "name": analysis.get("name", class_name),
                     "color": analysis.get("color"),
@@ -103,13 +104,12 @@ def detect_objects():
                     "material": analysis.get("material")
                 }
             except Exception as analysis_error:
-                print(f"Image analysis failed: {str(analysis_error)}")
-                # Fallback to basic product info
+                print(f"Error analyzing image {cropped_path}: {str(analysis_error)}")
                 product_info = {
                     "name": class_name
                 }
             
-            # Get pricing information with enhanced product details
+            # Get pricing information
             pricing_result = get_product_price(product_info)
             
             # Extract price if found, otherwise None
